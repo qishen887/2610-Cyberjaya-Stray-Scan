@@ -72,5 +72,9 @@ def logout():
     session.clear() # Clear all login status
     return redirect(url_for('index'))
 
+@app.route('/register')
+def register_page():
+    return render_template('signup.html') # 确保你有一个 signup.html 文件
+
 if __name__ == '__main__':
     app.run(debug=True)
