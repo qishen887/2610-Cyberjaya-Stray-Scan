@@ -1,3 +1,5 @@
+from ast import Return
+
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
@@ -34,8 +36,7 @@ class AnimalReport(db.Model):
     created_at    = db.Column(db.DateTime,    default=datetime.utcnow)
     status        = db.Column(db.String(20),  nullable=False, default='pending')  # pending first, then admin can change the status
 
-    def to_dict(self):
-        """Return a JSON-serialisable dict for API responses."""
+    def to_dict(self):  # Return a JSON-serialisable dict for API responses.
         return {
             "id":            self.id,
             "animal":        self.custom_animal if self.custom_animal else self.animal_type,
@@ -69,8 +70,7 @@ def home():
 
 
 @app.route('/submit', methods=['POST'])
-def submit():
-    """Receive the form, save the image, write a row to the DB."""
+def submit():    # Receive the form, save the image, write a row to the DB.
     try:
         animal_type   = request.form.get('animalType')
         custom_animal = request.form.get('customAnimal') or None
@@ -116,22 +116,19 @@ def submit():
 # Optional read endpoints
 
 @app.route('/reports', methods=['GET'])
-def get_reports():
-    """Return all reports, newest first."""
+def get_reports(): # Return all reports, newest first.
     reports = AnimalReport.query.order_by(AnimalReport.created_at.desc()).all()
     return jsonify({"status": "success", "data": [r.to_dict() for r in reports]})
 
 
 @app.route('/reports/<int:report_id>', methods=['GET'])
-def get_report(report_id):
-    """Return a single report by ID."""
+def get_report(report_id): # Return a single report by ID.
     report = AnimalReport.query.get_or_404(report_id)
     return jsonify({"status": "success", "data": report.to_dict()})
 
 
 @app.route('/reports/<int:report_id>', methods=['DELETE'])
-def delete_report(report_id):
-    """Delete a report by ID."""
+def delete_report(report_id): # Delete a report by ID.
     report = AnimalReport.query.get_or_404(report_id)
     db.session.delete(report)
     db.session.commit()
