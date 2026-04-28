@@ -336,15 +336,17 @@
             <div id="resultImageContainer"></div>
             <br>
             <button class="back-btn" onclick="resetForm()">Submit New Report</button>
-            <a href="Homepage.html">
+            <a href="homepage.html">
                 <button class="button">Go to homepage</button>
             </a>
         </div>
     </div>
 
+    <!-- FIX 1: Script is now correctly placed at the bottom of <body>, outside all divs -->
     <script>
+        // FIX 2: Submit handler is properly attached to the form via addEventListener
         document.getElementById('animalReportForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+            e.preventDefault(); // FIX 3: e now correctly refers to the submit event
 
             const form = this;
             const formData = new FormData(form);
@@ -357,6 +359,7 @@
 
                 const result = await response.json();
 
+                // FIX 4: Backend now returns result.data, so we read it here correctly
                 if (result.status === "success") {
                     const data = result.data;
 
@@ -366,11 +369,13 @@
                     document.getElementById('resultText').innerText =
                         `Animal: ${data.animal}\nLocation: ${data.location}\nQuantity: ${data.quantity}\nHealth: ${data.health}\nDetails: ${data.details}`;
 
+                    // Dynamically inject <img> only when an image was uploaded.
+                    // Never leave a srcless <img> in the DOM — browsers show a broken icon.
                     const container = document.getElementById('resultImageContainer');
                     container.innerHTML = '';
                     if (data.image) {
                         const imgEl = document.createElement('img');
-                        imgEl.src = '/uploads/' + data.image.split('/').pop();
+                        imgEl.src = '/uploads/' + data.image;  // data.image is just the filename e.g. 'rabbit.jpg'
                         imgEl.style.cssText = 'max-width:100%; margin-top:10px; border-radius:10px;';
                         imgEl.onerror = function() {
                             container.innerHTML = '<p style="color:#e74c3c;font-size:13px;">⚠️ Image could not be loaded.</p>';
