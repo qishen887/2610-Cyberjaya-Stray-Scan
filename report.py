@@ -1,9 +1,9 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
-from flask import send_from_directory
 
 app = Flask(__name__)
 
+# Absolute path — works regardless of where you run the script from
 UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -31,16 +31,14 @@ def submit():
 
         file = request.files.get('img')
 
-        filepath = None
+        saved_filename = None
         if file and file.filename != '':
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+            saved_filename = file.filename  # just the filename e.g. "rabbit.jpg"
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], saved_filename)
             file.save(filepath)
+            print(f"[DEBUG] Saved: {filepath}")
 
         animal_display = custom_animal if custom_animal else animal_type
-
-        print("=== New Report ===")
-        print(animal_type, custom_animal, address, quantity, health_status, details)
-        print("Image:", filepath)
 
         return jsonify({
             "status": "success",
@@ -51,11 +49,12 @@ def submit():
                 "quantity": quantity,
                 "health": health_status,
                 "details": details,
-                "image": filepath  
+                "image": saved_filename  # ONLY the filename, e.g. "rabbit.jpg"
             }
         })
 
     except Exception as e:
+        print(f"[ERROR] {e}")
         return jsonify({
             "status": "error",
             "message": str(e)
