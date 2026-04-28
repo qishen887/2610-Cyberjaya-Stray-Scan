@@ -32,6 +32,7 @@ class AnimalReport(db.Model):
     details       = db.Column(db.Text,        nullable=True)
     image         = db.Column(db.String(255), nullable=True)    # stored filename only
     created_at    = db.Column(db.DateTime,    default=datetime.utcnow)
+    status        = db.Column(db.String(20),  nullable=False, default='pending')  # pending first, then admin can change the status
 
     def to_dict(self):
         """Return a JSON-serialisable dict for API responses."""
@@ -45,7 +46,8 @@ class AnimalReport(db.Model):
             "health":        self.health_status,
             "details":       self.details,
             "image":         self.image,
-            "created_at":    self.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at":    self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "status":        self.status
         }
 
 
