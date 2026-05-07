@@ -27,27 +27,28 @@
         .container {
             max-width: 600px;
             margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            background-color: rgba(255, 255, 255, 0.9); /* 90% 不透明 */
+            backdrop-filter: blur(5px); /* 让背景模糊（高级感） */
             overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
             padding: 30px;
             text-align: center;
         }
 
         .header h1 {
-            color: white;
+            color: black;
             font-size: 28px;
             font-weight: 700;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .header p {
-            color: rgba(255, 255, 255, 0.9);
+            color: black;
             margin-top: 8px;
             font-size: 14px;
         }
@@ -342,11 +343,9 @@
         </div>
     </div>
 
-    <!-- FIX 1: Script is now correctly placed at the bottom of <body>, outside all divs -->
     <script>
-        // FIX 2: Submit handler is properly attached to the form via addEventListener
         document.getElementById('animalReportForm').addEventListener('submit', async function(e) {
-            e.preventDefault(); // FIX 3: e now correctly refers to the submit event
+            e.preventDefault(); 
 
             const form = this;
             const formData = new FormData(form);
@@ -359,7 +358,6 @@
 
                 const result = await response.json();
 
-                // FIX 4: Backend now returns result.data, so we read it here correctly
                 if (result.status === "success") {
                     const data = result.data;
 
@@ -369,8 +367,6 @@
                     document.getElementById('resultText').innerText =
                         `Animal: ${data.animal}\nLocation: ${data.location}\nQuantity: ${data.quantity}\nHealth: ${data.health}\nDetails: ${data.details}`;
 
-                    // Dynamically inject <img> only when an image was uploaded.
-                    // Never leave a srcless <img> in the DOM — browsers show a broken icon.
                     const container = document.getElementById('resultImageContainer');
                     container.innerHTML = '';
                     if (data.image) {
