@@ -2,6 +2,23 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
+import urllib.request
+import urllib.parse
+import json
+
+
+def reverse_geocode(lat, lon):
+    if lat is None or lon is None:
+        return "—"
+    try:
+        params = urllib.parse.urlencode({"lat": lat, "lon": lon, "format": "json"})
+        url = f"https://nominatim.openstreetmap.org/reverse?{params}"
+        req = urllib.request.Request(url, headers={"User-Agent": "AnimalReportApp/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        return data.get("display_name", f"{lat}, {lon}")
+    except Exception:
+        return f"{lat}, {lon}"
 
 app = Flask(__name__)
 
@@ -40,7 +57,7 @@ class AnimalReport(db.Model):
             "animal":        self.custom_animal if self.custom_animal else self.animal_type,
             "animal_type":   self.animal_type,
             "custom_animal": self.custom_animal,
-            "location":      f"{self.latitude}, {self.longitude}" if self.latitude is not None and self.longitude is not None else None,
+            "location":      reverse_geocode(self.latitude, self.longitude),
             "quantity":      self.quantity,
             "health":        self.health_status,
             "details":       self.details,
@@ -165,13 +182,13 @@ def export_excel():
     from openpyxl import Workbook
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from flask import send_file
-
+ 
     reports = AnimalReport.query.order_by(AnimalReport.created_at.desc()).all()
-
+ 
     wb = Workbook()
     ws = wb.active
     ws.title = "Animal Reports"
-
+ 
     # Header style
     header_font   = Font(bold=True, color="FFFFFF", name="Arial", size=11)
     header_fill   = PatternFill("solid", start_color="2E4057")
@@ -180,7 +197,7 @@ def export_excel():
         left=Side(style="thin"), right=Side(style="thin"),
         top=Side(style="thin"), bottom=Side(style="thin")
     )
-
+ 
     # Status fill colours
     status_fills = {
         "pending":  PatternFill("solid", start_color="FFF3CD"),
@@ -192,11 +209,11 @@ def export_excel():
         "approved": Font(color="155724",  name="Arial", size=10),
         "rejected": Font(color="721C24",  name="Arial", size=10),
     }
-
+ 
     headers = ["ID", "Animal", "Custom Animal", "Location", "Quantity",
                "Health Status", "Status", "Details", "Image", "Submitted At"]
     col_widths = [6, 16, 16, 24, 10, 14, 12, 36, 28, 22]
-
+ 
     # Write headers
     for col, (h, w) in enumerate(zip(headers, col_widths), 1):
         cell = ws.cell(row=1, column=col, value=h)
@@ -205,9 +222,9 @@ def export_excel():
         cell.alignment = header_align
         cell.border  = thin_border
         ws.column_dimensions[cell.column_letter].width = w
-
+ 
     ws.row_dimensions[1].height = 22
-
+ 
     # Write data rows
     row_fill_even = PatternFill("solid", start_color="F8F9FA")
     for r_idx, report in enumerate(reports, 2):
@@ -215,7 +232,7 @@ def export_excel():
             report.id,
             report.animal_type,
             report.custom_animal or "—",
-            report.address,
+            reverse_geocode(report.latitude, report.longitude),
             report.quantity,
             report.health_status,
             report.status,
@@ -236,17 +253,17 @@ def export_excel():
                 cell.fill = status_fills.get(s, PatternFill())
                 cell.font = status_fonts.get(s, Font(name="Arial", size=10))
                 cell.alignment = Alignment(horizontal="center", vertical="center")
-
+ 
         ws.row_dimensions[r_idx].height = 18
-
+ 
     # Summary row at the bottom
     last = len(reports) + 2
     ws.cell(row=last, column=1, value="Total").font = Font(bold=True, name="Arial", size=10)
     ws.cell(row=last, column=5, value=f'=SUM(E2:E{last-1})').font = Font(bold=True, name="Arial", size=10)
-
+ 
     # Freeze the header row
     ws.freeze_panes = "A2"
-
+ 
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
@@ -256,8 +273,8 @@ def export_excel():
         as_attachment=True,
         download_name="animal_reports.xlsx"
     )
-
-
+ 
+ 
 @app.route('/export/pdf')
 def export_pdf():
     import io
@@ -268,26 +285,26 @@ def export_pdf():
     from reportlab.lib.units import mm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.enums import TA_CENTER
-
+ 
     reports = AnimalReport.query.order_by(AnimalReport.created_at.desc()).all()
-
+ 
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
                             leftMargin=15*mm, rightMargin=15*mm,
                             topMargin=15*mm, bottomMargin=15*mm)
-
+ 
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle("title", parent=styles["Title"],
                                  fontSize=16, spaceAfter=4, textColor=colors.HexColor("#2E4057"))
     sub_style   = ParagraphStyle("sub", parent=styles["Normal"],
                                  fontSize=9, textColor=colors.grey, spaceAfter=14)
     wrap_style  = ParagraphStyle("wrap", parent=styles["Normal"], fontSize=8, leading=10)
-
+ 
     story = [
         Paragraph("🐾 Animal Report Export", title_style),
         Paragraph(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC  |  Total records: {len(reports)}", sub_style),
     ]
-
+ 
     # Table data
     col_headers = ["ID", "Animal", "Location", "Qty", "Health", "Status", "Details", "Submitted"]
     data = [col_headers]
@@ -295,22 +312,22 @@ def export_pdf():
         data.append([
             str(rpt.id),
             f"{rpt.custom_animal or rpt.animal_type}",
-            rpt.address,
+            reverse_geocode(rpt.latitude, rpt.longitude),
             str(rpt.quantity),
             rpt.health_status.capitalize(),
             rpt.status.capitalize(),
             Paragraph(rpt.details or "—", wrap_style),
             rpt.created_at.strftime("%Y-%m-%d\n%H:%M"),
         ])
-
+ 
     col_widths_pdf = [12*mm, 28*mm, 42*mm, 12*mm, 18*mm, 18*mm, 80*mm, 30*mm]
-
+ 
     STATUS_COLORS = {
         "pending":  colors.HexColor("#FFF3CD"),
         "approved": colors.HexColor("#D4EDDA"),
         "rejected": colors.HexColor("#F8D7DA"),
     }
-
+ 
     tbl = Table(data, colWidths=col_widths_pdf, repeatRows=1)
     base_style = [
         # Header
@@ -333,20 +350,20 @@ def export_pdf():
         ("TOPPADDING",  (0,1), (-1,-1), 5),
         ("BOTTOMPADDING",(0,1),(-1,-1), 5),
     ]
-
+ 
     # Colour status cells per row
     for i, rpt in enumerate(reports, 1):
         bg = STATUS_COLORS.get(rpt.status, colors.white)
         base_style.append(("BACKGROUND", (5, i), (5, i), bg))
-
+ 
     tbl.setStyle(TableStyle(base_style))
     story.append(tbl)
-
+ 
     doc.build(story)
     buf.seek(0)
     return send_file(buf, mimetype="application/pdf",
                      as_attachment=True, download_name="animal_reports.pdf")
-
-
+ 
+ 
 if __name__ == '__main__':
     app.run(debug=True)

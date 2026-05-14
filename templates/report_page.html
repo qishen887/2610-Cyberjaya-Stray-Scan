@@ -375,26 +375,30 @@
 
                 const result = await response.json();
 
-                if (result.status === "success") {
-                    const data = result.data;
+                const data = result.data;
 
                     document.getElementById('formContainer').style.display = 'none';
                     document.getElementById('successMessage').style.display = 'block';
 
-                    document.getElementById('resultText').innerText =
-                        `Animal: ${data.animal}\nLocation: ${data.location}\nQuantity: ${data.quantity}\nHealth: ${data.health}\nDetails: ${data.details}`;
+                    // Update the text to English
+                    document.getElementById('resultText').innerText = 
+                        `Animal: ${data.animal}\n` +
+                        `Location: ${data.location}\n` + 
+                        `Quantity: ${data.quantity}\n` +
+                        `Health: ${data.health}\n` +
+                        `Details: ${data.details || 'None provided'}`;
 
                     const container = document.getElementById('resultImageContainer');
                     container.innerHTML = '';
                     if (data.image) {
                         const imgEl = document.createElement('img');
-                        imgEl.src = '/uploads/' + data.image;  // data.image is just the filename e.g. 'rabbit.jpg'
+                        imgEl.src = '/uploads/' + data.image;  
                         imgEl.style.cssText = 'max-width:100%; margin-top:10px; border-radius:10px;';
                         imgEl.onerror = function() {
                             container.innerHTML = '<p style="color:#e74c3c;font-size:13px;">⚠️ Image could not be loaded.</p>';
                         };
                         container.appendChild(imgEl);
-                    }
+                    
                 } else {
                     alert("Error: " + result.message);
                 }
@@ -422,43 +426,40 @@
         // Marker variable
         let marker;
 
-        // Click map event
+        // Map click event
         map.on('click', async function(e) {
-
             const lat = e.latlng.lat;
             const lng = e.latlng.lng;
 
-            // Remove old marker
+            // 1. Remove old marker
             if (marker) {
                 map.removeLayer(marker);
             }
-
+            
             // Add new marker
             marker = L.marker([lat, lng]).addTo(map);
 
-            // Save coordinates
+            // 2. Save coordinates to hidden fields
             document.getElementById('latitude').value = lat;
             document.getElementById('longitude').value = lng;
 
-            // Reverse geocoding
-            try {
+            // 3. Show a loading message in the address input
+            const addressInput = document.getElementById('address');
+            addressInput.value = "Fetching address details..."; 
 
+            try {
                 const response = await fetch(
                     `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
                 );
-
                 const data = await response.json();
 
-                // Auto fill address
-                document.getElementById('address').value =
-                    data.display_name || `${lat}, ${lng}`;
+                // 4. Show the detailed address if found, otherwise show a fallback text
+                addressInput.value = data.display_name || "Pinned location (Coordinates saved)";
 
             } catch (error) {
-
                 console.error(error);
-
-                document.getElementById('address').value =
-                    `${lat}, ${lng}`;
+                // 5. Fallback text if network error occurs
+                addressInput.value = "Pinned location (Coordinates saved)";
             }
         });
     </script>
