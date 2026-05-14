@@ -25,7 +25,8 @@ class AnimalReport(db.Model):
     id            = db.Column(db.Integer, primary_key=True)
     animal_type   = db.Column(db.String(50),  nullable=False)   # value from dropdown
     custom_animal = db.Column(db.String(100), nullable=True)    # free-text if "other"
-    address       = db.Column(db.String(255), nullable=False)
+    latitude  = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
     quantity      = db.Column(db.Integer,     nullable=False)
     health_status = db.Column(db.String(20),  nullable=False)   # healthy/injured/sick/unknown
     details       = db.Column(db.Text,        nullable=True)
@@ -39,7 +40,7 @@ class AnimalReport(db.Model):
             "animal":        self.custom_animal if self.custom_animal else self.animal_type,
             "animal_type":   self.animal_type,
             "custom_animal": self.custom_animal,
-            "location":      self.address,
+            "location":      f"{self.latitude}, {self.longitude}" if self.latitude is not None and self.longitude is not None else None,
             "quantity":      self.quantity,
             "health":        self.health_status,
             "details":       self.details,
@@ -71,7 +72,8 @@ def submit():  # Receive the form, save the image, write a row to the DB.
     try:
         animal_type   = request.form.get('animalType')
         custom_animal = request.form.get('customAnimal') or None
-        address       = request.form.get('address')
+        latitude      = request.form.get('latitude')
+        longitude     = request.form.get('longitude')
         quantity      = request.form.get('quantity')
         health_status = request.form.get('healthStatus')
         details       = request.form.get('details') or None
@@ -87,7 +89,8 @@ def submit():  # Receive the form, save the image, write a row to the DB.
         report = AnimalReport(
             animal_type   = animal_type,
             custom_animal = custom_animal,
-            address       = address,
+            latitude  = float(request.form.get('latitude')) if request.form.get('latitude') else None,
+            longitude = float(request.form.get('longitude')) if request.form.get('longitude') else None,
             quantity      = int(quantity),
             health_status = health_status,
             details       = details,
