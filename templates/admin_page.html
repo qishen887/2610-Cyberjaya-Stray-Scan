@@ -465,6 +465,33 @@
             padding: 40px;
             color: var(--muted);
         }
+
+        .export-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all 0.15s;
+            text-decoration: none;
+        }
+        .export-btn.excel {
+            background: rgba(33,115,70,0.12);
+            color: #3ecf8e;
+            border-color: rgba(62,207,142,0.3);
+        }
+        .export-btn.excel:hover { background: rgba(33,115,70,0.22); }
+        .export-btn.pdf {
+            background: rgba(220,53,69,0.1);
+            color: #f55c5c;
+            border-color: rgba(245,92,92,0.3);
+        }
+        .export-btn.pdf:hover { background: rgba(220,53,69,0.2); }
     </style>
 </head>
 <body>
@@ -508,9 +535,17 @@
                 <h1>Animal Reports</h1>
                 <p id="reportCount">Loading reports...</p>
             </div>
-            <button class="refresh-btn" onclick="loadReports()">
-                ↻ Refresh
-            </button>
+<div style="display:flex;gap:8px;align-items:center;">
+                <a class="export-btn excel" href="/export/excel" download>
+                    📊 Export Excel
+                </a>
+                <a class="export-btn pdf" href="/export/pdf" download>
+                    📄 Export PDF
+                </a>
+                <button class="refresh-btn" onclick="loadReports()">
+                    ↻ Refresh
+                </button>
+            </div>
         </div>
 
         <!-- Filter tabs -->
