@@ -289,6 +289,9 @@ def export_pdf():
     from reportlab.lib.units import mm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.enums import TA_CENTER
+
+    def utc_now():
+        return datetime.now(timezone.utc) + timedelta(hours=8)  # Adjust if you want a different timezone
  
     reports = AnimalReport.query.order_by(AnimalReport.created_at.desc()).all()
  
@@ -306,7 +309,7 @@ def export_pdf():
  
     story = [
         Paragraph("🐾 Animal Report Export", title_style),
-        Paragraph(f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M')} UTC  |  Total records: {len(reports)}", sub_style),
+        Paragraph(f"Generated: {utc_now().strftime('%Y-%m-%d %H:%M')} UTC+8  |  Total records: {len(reports)}", sub_style),
     ]
  
     # Table data
@@ -316,7 +319,7 @@ def export_pdf():
         data.append([
             str(rpt.id),
             f"{rpt.custom_animal or rpt.animal_type}",
-            rpt.address or (f"{rpt.latitude}, {rpt.longitude}" if rpt.latitude else "—"),
+            Paragraph(rpt.address or (f"{rpt.latitude}, {rpt.longitude}" if rpt.latitude else "—"), wrap_style),
             str(rpt.quantity),
             rpt.health_status.capitalize(),
             rpt.status.capitalize(),
@@ -324,7 +327,7 @@ def export_pdf():
             rpt.created_at.strftime("%Y-%m-%d\n%H:%M"),
         ])
  
-    col_widths_pdf = [12*mm, 28*mm, 42*mm, 12*mm, 18*mm, 18*mm, 80*mm, 30*mm]
+    col_widths_pdf = [12*mm, 25*mm, 55*mm, 12*mm, 18*mm, 18*mm, 68*mm, 30*mm]
  
     STATUS_COLORS = {
         "pending":  colors.HexColor("#FFF3CD"),
