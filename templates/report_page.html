@@ -500,6 +500,34 @@
                 marker.bindPopup(addr).openPopup();
             }
         });
+
+        // ── Location mode toggle ──────────────────────────────────────────────
+        function switchMode(mode) {
+            const manualDiv = document.getElementById('manualDiv');
+            const mapDiv    = document.getElementById('mapDiv');
+            const manualIn  = document.getElementById('addressManual');
+            const hiddenIn  = document.getElementById('addressHidden');
+            const btnManual = document.getElementById('btnManual');
+            const btnMap    = document.getElementById('btnMap');
+
+            if (mode === 'manual') {
+                manualDiv.style.display = 'block';
+                mapDiv.style.display    = 'none';
+                manualIn.required = true;
+                hiddenIn.required = false;
+                btnManual.classList.add('active');
+                btnMap.classList.remove('active');
+            } else {
+                manualDiv.style.display = 'none';
+                mapDiv.style.display    = 'block';
+                manualIn.required = false;
+                hiddenIn.required = true;
+                btnManual.classList.remove('active');
+                btnMap.classList.add('active');
+                // Leaflet needs this when shown after being hidden
+                setTimeout(() => map.invalidateSize(), 100);
+            }
+        }
     </script>
 </body>
 </html>

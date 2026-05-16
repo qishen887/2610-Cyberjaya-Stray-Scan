@@ -43,8 +43,9 @@ class AnimalReport(db.Model):
     id            = db.Column(db.Integer, primary_key=True)
     animal_type   = db.Column(db.String(50),  nullable=False)   # value from dropdown
     custom_animal = db.Column(db.String(100), nullable=True)    # free-text if "other"
-    latitude  = db.Column(db.Float, nullable=True)
-    longitude = db.Column(db.Float, nullable=True)
+    address       = db.Column(db.String(500), nullable=True)   # typed or reverse-geocoded address
+    latitude      = db.Column(db.Float, nullable=True)
+    longitude     = db.Column(db.Float, nullable=True)
     quantity      = db.Column(db.Integer,     nullable=False)
     health_status = db.Column(db.String(20),  nullable=False)   # healthy/injured/sick/unknown
     details       = db.Column(db.Text,        nullable=True)
@@ -58,7 +59,7 @@ class AnimalReport(db.Model):
             "animal":        self.custom_animal if self.custom_animal else self.animal_type,
             "animal_type":   self.animal_type,
             "custom_animal": self.custom_animal,
-            "location":      reverse_geocode(self.latitude, self.longitude),
+            "location":      self.address or (f"{self.latitude}, {self.longitude}" if self.latitude else "—"),
             "quantity":      self.quantity,
             "health":        self.health_status,
             "details":       self.details,
@@ -90,6 +91,7 @@ def submit():  # Receive the form, save the image, write a row to the DB.
     try:
         animal_type   = request.form.get('animalType')
         custom_animal = request.form.get('customAnimal') or None
+        address       = request.form.get('address') or None
         latitude      = request.form.get('latitude')
         longitude     = request.form.get('longitude')
         quantity      = request.form.get('quantity')
@@ -107,8 +109,9 @@ def submit():  # Receive the form, save the image, write a row to the DB.
         report = AnimalReport(
             animal_type   = animal_type,
             custom_animal = custom_animal,
-            latitude  = float(request.form.get('latitude')) if request.form.get('latitude') else None,
-            longitude = float(request.form.get('longitude')) if request.form.get('longitude') else None,
+            address       = address,
+            latitude      = float(request.form.get('latitude')) if request.form.get('latitude') else None,
+            longitude     = float(request.form.get('longitude')) if request.form.get('longitude') else None,
             quantity      = int(quantity),
             health_status = health_status,
             details       = details,
@@ -233,7 +236,7 @@ def export_excel():
             report.id,
             report.animal_type,
             report.custom_animal or "—",
-            reverse_geocode(report.latitude, report.longitude),
+            report.address or (f"{report.latitude}, {report.longitude}" if report.latitude else "—"),
             report.quantity,
             report.health_status,
             report.status,
@@ -313,7 +316,7 @@ def export_pdf():
         data.append([
             str(rpt.id),
             f"{rpt.custom_animal or rpt.animal_type}",
-            reverse_geocode(rpt.latitude, rpt.longitude),
+            rpt.address or (f"{rpt.latitude}, {rpt.longitude}" if rpt.latitude else "—"),
             str(rpt.quantity),
             rpt.health_status.capitalize(),
             rpt.status.capitalize(),
