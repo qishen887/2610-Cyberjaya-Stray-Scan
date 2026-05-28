@@ -49,10 +49,17 @@
 
         <div id="main-content">
             <header>
+                <div class="user-profile">
+    <img src="{{ url_for('static', filename='default_avatar.png') }}" class="avatar" onclick="toggleUserMenu()">
+    
+    <div id="user-menu" class="dropdown-menu">
+        <a href="#">log in</a>
+        <a href="#">signup</a>
+    </div>
+</div>
+
                 <h1 style="margin: 0;">Cyberjaya Stray Scan</h1>
                 <nav>
-                    <button>About</button>
-                    <button>Contact</button>
                 </nav>
             </header>
 
@@ -174,6 +181,11 @@ function changeBg(color) {
         mainContent.style.backgroundColor = color;
     }
 }
+// 切换字体逻辑
+function changeFont(fontFamily) {
+    // 获取整个页面的根容器或 body
+    document.body.style.fontFamily = fontFamily;
+}
 
 // 点击页面任意外部区域时，自动关闭打开的面板
 window.addEventListener('click', function(event) {
@@ -226,6 +238,38 @@ function applyFilters() {
     // 过滤完成后自动关闭面板
     closeFilters();
 }
+
+function changeFont(fontType) {
+    let fontStack = "";
+    
+    switch(fontType) {
+        case 'sans':
+            fontStack = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+            break;
+        case 'serif':
+            fontStack = "Georgia, 'Times New Roman', Times, serif";
+            break;
+        case 'mono':
+            fontStack = "'Courier New', Courier, monospace";
+            break;
+        default:
+            fontStack = "sans-serif";
+    }
+    
+    document.body.style.fontFamily = fontStack;
+    localStorage.setItem('userFont', fontStack);
+}
+function toggleUserMenu() {
+    const menu = document.getElementById('user-menu');
+    menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+}
+
+// 点击页面其他地方关闭菜单
+window.onclick = function(event) {
+    if (!event.target.matches('.avatar')) {
+        document.getElementById('user-menu').style.display = 'none';
+    }
+}
     </script>
 <div id="settingsModal" class="settings-bottom-panel">
     <div class="console-box solid-version">
@@ -243,6 +287,16 @@ function applyFilters() {
                     <span>Deep Blue</span>
                     <div class="color-preview" style="background: #0f172a;"></div>
                 </div>
+                <div class="settings-item" onclick="changeFont('Arial, sans-serif')">
+<div class="settings-item" onclick="changeFont('sans')">
+    <span>Modern Sans</span>
+</div>
+<div class="settings-item" onclick="changeFont('mono')">
+    <span>Code Monospace</span>
+</div>
+<div class="settings-item" onclick="changeFont('serif')">
+    <span>Elegant Serif</span>
+</div>
             </div>
             <p class="console-status" onclick="closeSettings()" style="cursor:pointer; text-align:center;">[ Close Panel ]</p>
         </div>

@@ -26,3 +26,4 @@ def report():
 # Only one entry point for the application
 if __name__ == '__main__':
     app.run(debug=True)
+
