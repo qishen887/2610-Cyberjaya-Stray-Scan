@@ -56,6 +56,7 @@ class AnimalReport(db.Model):
     image         = db.Column(db.String(255), nullable=True)    # stored filename only
     status        = db.Column(db.String(20),  nullable=False, default='pending')  # pending/approved/rejected
     created_at    = db.Column(db.DateTime,    default=utc_now)
+    submitted_by_email = db.Column(db.String(120), nullable=True)  # None = guest submission
 
     def to_dict(self):  #Return a JSON-serialisable dict for API responses.
         return {
@@ -70,6 +71,7 @@ class AnimalReport(db.Model):
             "image":         self.image if self.image else None,
             "status":        self.status,
             "created_at":    self.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "submitted_by":  self.submitted_by_email or "Guest",
         }
 
 class User(db.Model):
@@ -221,6 +223,7 @@ def submit():  # Receive the form, save the image, write a row to the DB.
             details       = details,
             image         = saved_filename,
             status        = 'pending',
+            submitted_by_email = session.get('user'),  # None if not logged in
         )
         db.session.add(report)
         db.session.commit()

@@ -697,6 +697,10 @@
                     <label>Submitted</label>
                     <p id="mDate">—</p>
                 </div>
+                <div class="detail-item" style="grid-column: 1 / -1;">
+                    <label>Submitted By</label>
+                    <p id="mSubmittedBy">—</p>
+                </div>
             </div>
             <div class="detail-full">
                 <label>Description</label>
@@ -819,6 +823,9 @@
         document.getElementById('mHealth').textContent   = capitalize(r.health);
         document.getElementById('mDate').textContent     = r.created_at;
         document.getElementById('mDetails').textContent  = r.details || 'No description provided.';
+        document.getElementById('mSubmittedBy').innerHTML = r.submitted_by === 'Guest'
+            ? `<span style="color:var(--muted);font-style:italic">👤 Guest (not logged in)</span>`
+            : `<span style="color:var(--accent)">🔑 ${r.submitted_by}</span>`;
 
         // Status badge inside modal
         document.getElementById('mStatus').innerHTML = `<span class="badge ${r.status}">${r.status}</span>`;
