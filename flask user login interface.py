@@ -133,5 +133,45 @@ def signup():
     flash("Registration successful! Please login.")
     return redirect(url_for('index'))
 
+# ==========================================
+# 忘记密码 - 局部独立测试路由
+# ==========================================
+
+# 1. 负责显示“忘记密码”网页的路由
+@app.route('/forgot-password')
+def forgot_password_page():
+    # 确保你的 templates 文件夹里有 forgot_password.html
+    return render_template('forgot_password.html')
+
+
+# 2. 负责接收表单提交，执行重置密码逻辑的路由
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    email = request.form.get('email').lower().strip()
+    password = request.form.get('password')
+    confirm_password = request.form.get('confirm_password')
+
+    # 验证账号是否存在于你的内存 users 字典里
+    if email not in users:
+        flash("Email address not found. Please register first.")
+        return redirect(url_for('forgot_password_page'))
+
+    # 验证两次密码输入是否一致
+    if password != confirm_password:
+        flash("Passwords do not match!")
+        return redirect(url_for('forgot_password_page'))
+    
+    # 验证是否满足你严格要求的 8 位纯数字限制
+    if not (len(password) == 8 and password.isdigit()):
+        flash("Format error: Password must be exactly 8 digits!")
+        return redirect(url_for('forgot_password_page'))
+
+    # 核心：哈希加密新密码，并覆写更新字典里的旧密码
+    users[email]['password'] = generate_password_hash(password)
+
+    # 重置成功后，把你踢回登录首页，并给个成功的绿色弹窗
+    flash("Password reset successfully! Please login with your new password.")
+    return redirect(url_for('index'))  # 对应你现有的 @app.route('/') 首页
+
 if __name__ == '__main__':
     app.run(debug=True)
