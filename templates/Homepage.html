@@ -86,6 +86,13 @@
                     <label><input type="checkbox" name="animalFilter" value="rabbit" checked> 🐰 Rabbit</label>
                     <label><input type="checkbox" name="animalFilter" value="bird" checked> 🐦 Bird</label>
                     <label><input type="checkbox" name="animalFilter" value="squirrel" checked> 🐿️ Squirrel</label>
+                    <label><input type="checkbox" name="animalFilter" value="hamster" checked> 🐹 Hamster</label>
+                    <label><input type="checkbox" name="animalFilter" value="fish" checked> 🐠 Fish</label>
+                    <label><input type="checkbox" name="animalFilter" value="hedgehog" checked> 🦔 Hedgehog</label>
+                    <label><input type="checkbox" name="animalFilter" value="deer" checked> 🦌 Deer</label>
+                    <label><input type="checkbox" name="animalFilter" value="fox" checked> 🦊 Fox</label>
+                    <label><input type="checkbox" name="animalFilter" value="wild-bird" checked> 🦅 Wild Bird</label>
+                    <label><input type="checkbox" name="animalFilter" value="snake" checked> 🐍 Snake</label>
                     <label><input type="checkbox" name="animalFilter" value="other" checked> Other</label>
                 </div>
             </div>
@@ -141,18 +148,24 @@ map.on('locationerror', function(e) {
             setTimeout(() => { map.invalidateSize(); }, 350);
         }
 
-        function recenterMap(event) {
-    event.stopPropagation(); // Prevent map click event bubbling
-    
-    // Check if user's actual location is successfully retrieved
-    if (userPos) {
-        // If yes, fly smoothly to user's location with zoom level 16
-        map.flyTo(userPos, 16);
-    } else {
-        // If geolocation is pending or denied, fallback to default origin (Cyberjaya)
-        map.flyTo(cyberCoord, 15);
-    }
-       }
+function recenterMap(event) {
+            event.stopPropagation(); // Prevent map click event bubbling
+            
+            // Check if user's actual location is successfully retrieved
+            if (userPos) {
+                // If a marker already exists on the map, remove it first to avoid duplicates
+                if (marker) map.removeLayer(marker);
+
+                // Add the marker to the user's current location and open its popup
+                marker = L.marker(userPos).addTo(map).bindPopup("Your current location").openPopup();
+
+                // If yes, fly smoothly to user's location with zoom level 16
+                map.flyTo(userPos, 16);
+            } else {
+                // If geolocation is pending or denied, fallback to default origin (Cyberjaya)
+                map.flyTo(cyberCoord, 15);
+            }
+        }
 
         // Add marker on manual click
         map.on('click', function(e) {
@@ -229,19 +242,6 @@ function closeFilters() {
     document.getElementById('filterModal').style.display = 'none';
 }
 
-// 点击 Apply 按钮时触发的筛选过滤逻辑
-function applyFilters() {
-    // 获取用户勾选的所有动物类型
-    const selectedAnimals = Array.from(document.querySelectorAll('input[name="animalFilter"]:checked')).map(cb => cb.value);
-    // 获取用户勾选的所有健康状态
-    const selectedHealth = Array.from(document.querySelectorAll('input[name="healthFilter"]:checked')).map(cb => cb.value);
-
-    console.log("Selected Animals:", selectedAnimals);
-    console.log("Selected Health:", selectedHealth);
-
-    // 过滤完成后自动关闭面板
-    closeFilters();
-}
 
 function changeFont(fontType) {
     let fontStack = "";
@@ -299,6 +299,78 @@ window.addEventListener('click', function(event) {
         }
     }
 });
+// --- Fetch and Render All Database Reports on Map ---
+async function loadReportsOnMap() {
+    try {
+        // Request report coordinates from the backend API
+        const response = await fetch('/api/get_all_reports');
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            const reports = result.data;
+            
+            // Loop through each report record
+            reports.forEach(report => {
+                // Ensure geographical coordinates are valid before creating markers
+                if (report.lat && report.lng) {
+                    // Initialize and place the marker on the map
+                    const marker = L.marker([report.lat, report.lng]).addTo(map);
+                    
+                    // Bind an informative popup window to display detailed info on click
+                    marker.bindPopup(`
+                        <div style="font-family: Arial, sans-serif; line-height: 1.4;">
+                            <strong style="color: #2E4057;">Report #${report.id}</strong><br>
+                            <b>Animal:</b> ${report.animal_type}<br>
+                            <b>Quantity:</b> ${report.quantity}<br>
+                            <b>Condition:</b> ${report.health_status}<br>
+                            <b>Location:</b> ${report.address}
+                        </div>
+                    `);
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Failed to fetch locations from database:", error);
+    }
+}
+
+// Invoke the function to initialize map marking on page load
+loadReportsOnMap();
+
+function applyFilters() {
+    // 1. 收集被勾选的 Animal Type
+    const typeInputs = document.querySelectorAll('input[name="animalFilter"]:checked');
+    const selectedTypes = Array.from(typeInputs).map(input => input.value).join(',');
+    
+    // 2. 收集被勾选的 Health Status
+    const healthInputs = document.querySelectorAll('input[name="healthFilter"]:checked');
+    const selectedHealths = Array.from(healthInputs).map(input => input.value).join(',');
+    
+    // 3. 发送给后端
+    fetch(`/api/filter_reports?types=${selectedTypes}&healths=${selectedHealths}`)
+        .then(res => res.json())
+        .then(result => {
+            if (result.status === 'success') {
+                updateMapMarkers(result.data); // 刷新地图
+                closeFilters(); // 关闭面板
+            }
+        })
+        .catch(err => console.error("Filter error:", err));
+}
+
+// 刷新地图的专用函数
+function updateMapMarkers(reports) {
+    // 先移除当前地图上的所有 marker (假设你有一个 markers 数组)
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+    
+    // 重新添加
+    reports.forEach(r => {
+        const marker = L.marker([r.lat, r.lng]).addTo(map)
+                        .bindPopup(`${r.animal_type} (${r.health_status})`);
+        markers.push(marker);
+    });
+}
     </script>
 <div id="settingsModal" class="settings-bottom-panel">
     <div class="console-box solid-version">
