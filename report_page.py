@@ -85,6 +85,16 @@ class User(db.Model):
     def check_password(self, password):
         return check_password_hash(self.password, password)
 
+class VetClinic(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    address = db.Column(db.String(300), nullable=False)
+    phone = db.Column(db.String(30), nullable=False)
+    operating_hours = db.Column(db.String(200), nullable=False)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 # Create all tables on first run
 with app.app_context():
     db.create_all()
@@ -136,26 +146,26 @@ def login():
         return redirect(url_for('login_page'))
 
 @app.route('/register')
-def register_page():
-    return render_template('signup.html')
-
-@app.route('/signup', methods=['POST'])
+@app.route('/signup', methods=['GET', 'POST'])
 def signup():
+    if request.method == 'GET':
+        return render_template('signup.html')
+
     email            = request.form.get('email')
     password         = request.form.get('password')
     confirm_password = request.form.get('confirm_password')
 
     if not email or not password:
         flash("Email and password are required.")
-        return redirect(url_for('register_page'))
+        return redirect(url_for('signup'))
 
     if password != confirm_password:
         flash("Passwords do not match!")
-        return redirect(url_for('register_page'))
+        return redirect(url_for('signup'))
 
     if len(password) != 8:
         flash("Password must be exactly 8 characters!")
-        return redirect(url_for('register_page'))
+        return redirect(url_for('signup'))
 
     if email.endswith('@mmu.edu.my'):
         user_role = 'admin'
@@ -163,7 +173,7 @@ def signup():
         user_role = 'customer'
     else:
         flash("Please use an official MMU email (@mmu.edu.my or @student.mmu.edu.my)")
-        return redirect(url_for('register_page'))
+        return redirect(url_for('signup'))
 
     if User.query.filter_by(email=email).first():
         flash("Email already registered. Please login.")
@@ -239,6 +249,11 @@ def submit():  # Receive the form, save the image, write a row to the DB.
         db.session.rollback()
         print(f"[ERROR] {e}")
         return jsonify({"status": "error", "message": str(e)})
+
+@app.route('/settings')
+def settings_page():
+    return render_template('settings.html')
+from flask import send_from_directory, url_for
 
 # Optional read endpoints for admin dashboard to list reports, view details, delete, or update status.
 
@@ -491,6 +506,62 @@ def export_pdf():
     return send_file(buf, mimetype="application/pdf",
                      as_attachment=True, download_name="animal_reports.pdf")
  
+@app.route('/admin/vet-clinics')
+def vet_clinics():
+    if not session.get('logged_in'):
+        return redirect(url_for('login_page'))
+    clinics = VetClinic.query.order_by(VetClinic.name).all()
+    return render_template('vet_clinics.html', clinics=clinics)
+
+
+@app.route('/admin/vet-clinics/add', methods=['GET', 'POST'])
+def add_vet_clinic():
+    if not session.get('logged_in'):
+        return redirect(url_for('login_page'))
+    if request.method == 'POST':
+        clinic = VetClinic(
+            name=request.form['name'],
+            address=request.form['address'],
+            phone=request.form['phone'],
+            operating_hours=request.form['operating_hours'],
+            latitude=float(request.form['latitude']) if request.form.get('latitude') else None,
+            longitude=float(request.form.get('longitude')) if request.form.get('longitude') else None,
+        )
+        db.session.add(clinic)
+        db.session.commit()
+        flash('Vet clinic added successfully!', 'success')
+        return redirect(url_for('vet_clinics'))
+    return render_template('vet_clinics.html', form_mode='add', clinics=VetClinic.query.all())
+
+
+@app.route('/admin/vet-clinics/edit/<int:clinic_id>', methods=['GET', 'POST'])
+def edit_vet_clinic(clinic_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login_page'))
+    clinic = VetClinic.query.get_or_404(clinic_id)
+    if request.method == 'POST':
+        clinic.name = request.form['name']
+        clinic.address = request.form['address']
+        clinic.phone = request.form['phone']
+        clinic.operating_hours = request.form['operating_hours']
+        clinic.latitude = float(request.form['latitude']) if request.form.get('latitude') else None
+        clinic.longitude = float(request.form.get('longitude')) if request.form.get('longitude') else None
+        db.session.commit()
+        flash('Vet clinic updated!', 'success')
+        return redirect(url_for('vet_clinics'))
+    return render_template('vet_clinics.html', form_mode='edit', edit_clinic=clinic, clinics=VetClinic.query.all())
+
+
+@app.route('/admin/vet-clinics/delete/<int:clinic_id>', methods=['POST'])
+def delete_vet_clinic(clinic_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('login_page'))
+    clinic = VetClinic.query.get_or_404(clinic_id)
+    db.session.delete(clinic)
+    db.session.commit()
+    flash('Vet clinic deleted.', 'warning')
+    return redirect(url_for('vet_clinics'))
+
 def seed_default_users():
     defaults = [
         {"email": "admin@mmu.edu.my",           "password": "admin123", "role": "admin"},
