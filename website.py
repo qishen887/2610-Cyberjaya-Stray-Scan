@@ -3,7 +3,7 @@ import os
 from flask import Flask, render_template, url_for, request, jsonify, redirect, flash, send_from_directory, session
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta, timezone
-
+from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.secret_key = 'mmu'  # 保持和你原本 report_page.py 一致的密钥
 
@@ -18,6 +18,18 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
+class User(db.Model):
+    # 必须显式指定表名为你在工具里看到的 'users'
+    __tablename__ = 'users'  
+    
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(256), nullable=False)
+    
+    # 💡 提示：由于无法确认你的 reports.db 里有没有 role 这一列
+    # 1. 如果你在查看器右侧能看到 role 列，请保留下面这行
+    # 2. 如果你的表里【确实没有】role 列，请把下面这行注释掉
+    role = db.Column(db.String(50), nullable=True, default='customer')
 
 def utc_now():
     return datetime.now(timezone.utc) + timedelta(hours=8)  # Adjust if you want a different timezone
@@ -76,7 +88,7 @@ def homepage():
     return render_template('homepage.html')
 
 @app.route('/login')
-def login_page():
+def show_login():
     return render_template('login.html')
 
 @app.route('/signup')
@@ -170,6 +182,32 @@ def report():
     # 如果是普通的打开网页（GET 请求），直接渲染 HTML
     return render_template('report_page.html')
 
+@app.route('/vet-clinics')
+@app.route('/vets_clinics')
+def vet_clinics():
+    return render_template('vets_clinics.html', form_mode=None, edit_clinic=None, clinics=[])
+
+
+@app.route('/vet-clinics/add', methods=['GET', 'POST'])
+def add_vet_clinic():
+    if request.method == 'POST':
+        flash('Vet clinic submission is not enabled in this build yet.', 'warning')
+        return redirect(url_for('vet_clinics'))
+    return render_template('vets_clinics.html', form_mode='add', edit_clinic=None, clinics=[])
+
+
+@app.route('/vet-clinics/<int:clinic_id>/edit', methods=['GET', 'POST'])
+def edit_vet_clinic(clinic_id):
+    if request.method == 'POST':
+        flash('Vet clinic editing is not enabled in this build yet.', 'warning')
+        return redirect(url_for('vet_clinics'))
+    return render_template('vets_clinics.html', form_mode='edit', edit_clinic={'id': clinic_id, 'name': '', 'phone': '', 'address': '', 'operating_hours': '', 'google_map_link': '', 'latitude': None, 'longitude': None, 'image': None}, clinics=[])
+
+
+@app.route('/vet-clinics/<int:clinic_id>/delete', methods=['POST'])
+def delete_vet_clinic(clinic_id):
+    flash('Vet clinic deletion is not enabled in this build yet.', 'warning')
+    return redirect(url_for('vet_clinics'))
 
 from sqlalchemy import and_
 
@@ -210,6 +248,38 @@ def get_all_reports():
 @app.route('/settings')
 def settings_page():
     return render_template('settings.html')
+
+# --- 忘记密码 ---
+@app.route('/forgot-password')
+def forgot_password_page():
+    return render_template('forgot_password.html')
+
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    email = request.form.get('email').lower().strip()
+    password = request.form.get('password')
+    confirm_password = request.form.get('confirm_password')
+
+    # =================【核心修复 7：从数据库查询并修改密码】=================
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        flash("Email address not found. Please register first.")
+        return redirect(url_for('forgot_password_page'))
+
+    if password != confirm_password:
+        flash("Passwords do not match!")
+        return redirect(url_for('forgot_password_page'))
+    
+    if not (len(password) == 8 and password.isdigit()):
+        flash("Format error: Password must be exactly 8 digits!")
+        return redirect(url_for('forgot_password_page'))
+
+    # 修改密码并保存
+    user.password = generate_password_hash(password)
+    db.session.commit()
+
+    flash("Password reset successfully! Please login with your new password.")
+    return redirect(url_for('show_login'))
 from flask import send_from_directory, url_for
 
 if __name__ == '__main__':
