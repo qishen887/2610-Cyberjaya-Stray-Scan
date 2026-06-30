@@ -80,6 +80,7 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id         = db.Column(db.Integer, primary_key=True)
+    username   = db.Column(db.String(80), unique=True, nullable=False)
     email      = db.Column(db.String(120), unique=True, nullable=False)
     password   = db.Column(db.String(255), nullable=False)
     role       = db.Column(db.String(20),  nullable=False, default='customer')
@@ -108,10 +109,29 @@ def ensure_vet_clinic_image_column():
         with db.engine.begin() as connection:
             connection.execute(text("ALTER TABLE vet_clinic ADD COLUMN image VARCHAR(255)"))
 
+
+def ensure_user_username_column():
+    inspector = inspect(db.engine)
+    columns = {column['name'] for column in inspector.get_columns('users')}
+    if 'username' not in columns:
+        with db.engine.begin() as connection:
+            connection.execute(text("ALTER TABLE users ADD COLUMN username VARCHAR(80)"))
+
+
+def ensure_usernames_for_existing_rows():
+    with app.app_context():
+        users = User.query.all()
+        for user in users:
+            if not user.username:
+                user.username = user.email.split('@')[0] if user.email else f'user_{user.id}'
+        db.session.commit()
+
 # Create all tables on first run
 with app.app_context():
     db.create_all()
     ensure_vet_clinic_image_column()
+    ensure_user_username_column()
+    ensure_usernames_for_existing_rows()
 
 
 # Routes
@@ -134,7 +154,9 @@ def homepage():
 def report_page():
     return render_template('report_page.html')
 
+# FIXED: Added a secondary route decorator so HTML templates asking for 'show_login' won't crash 
 @app.route('/login', methods=['GET', 'POST'], endpoint='login_page')
+@app.route('/login-alt', methods=['GET', 'POST'], endpoint='show_login')
 def show_login():
     if request.method == 'GET':
         if 'user' in session:
@@ -162,6 +184,12 @@ def show_login():
 @app.route('/forgot-password', methods=['GET'], endpoint='forgot_password_page')
 def forgot_password_page():
     return render_template('forgot_password.html')
+
+# === ADDED: Added a route for the form submission in your forgot_password.html ===
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    flash("Password reset functionality is under construction.")
+    return redirect(url_for('login_page'))
 
 @app.route('/register')
 @app.route('/signup', methods=['GET', 'POST'])
@@ -201,7 +229,9 @@ def signup():
         flash("Email already registered. Please login.")
         return redirect(url_for('login_page'))
 
+    username = request.form.get('username', '').strip() or email.split('@')[0]
     new_user = User(
+        username = username,
         email    = email,
         password = generate_password_hash(password),
         role     = user_role
@@ -275,7 +305,7 @@ def submit():  # Receive the form, save the image, write a row to the DB.
 @app.route('/settings')
 def settings_page():
     return render_template('settings.html')
-from flask import send_from_directory, url_for
+
 
 # Optional read endpoints for admin dashboard to list reports, view details, delete, or update status.
 
@@ -602,16 +632,21 @@ def delete_vet_clinic(clinic_id):
 
 def seed_default_users():
     defaults = [
-        {"email": "admin@mmu.edu.my",           "password": "admin123", "role": "admin"},
-        {"email": "user@student.mmu.edu.my",    "password": "user1234", "role": "customer"},
+        {"email": "admin@mmu.edu.my", "password": "admin123", "role": "admin", "username": "admin"},
+        {"email": "user@student.mmu.edu.my", "password": "user1234", "role": "customer", "username": "user"},
     ]
     for d in defaults:
-        if not User.query.filter_by(email=d['email']).first():
-            db.session.add(User(
-                email    = d['email'],
-                password = generate_password_hash(d['password']),
-                role     = d['role']
-            ))
+        existing = User.query.filter_by(email=d['email']).first()
+        if existing:
+            if not existing.username:
+                existing.username = d['username']
+            continue
+        db.session.add(User(
+            username = d['username'],
+            email    = d['email'],
+            password = generate_password_hash(d['password']),
+            role     = d['role']
+        ))
     db.session.commit()
 
 with app.app_context():
