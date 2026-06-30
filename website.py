@@ -87,9 +87,41 @@ def home():
 def homepage():
     return render_template('homepage.html')
 
-@app.route('/login')
+@app.route('/login', methods=['GET', 'POST'])
 def show_login():
-    return render_template('login.html')
+    if request.method == 'GET':
+        if 'user' in session:
+            return redirect(url_for('homepage'))
+        return render_template('login.html')
+
+    email = (request.form.get('email') or '').strip().lower()
+    password = request.form.get('password') or ''
+
+    user = User.query.filter_by(email=email).first()
+    if user and check_password_hash(user.password, password):
+        session['user'] = user.email
+        session['role'] = user.role or 'customer'
+        session['display_name'] = user.email.split('@')[0]
+        return redirect(url_for('homepage'))
+
+    flash("Invalid email or password. Please try again.")
+    return redirect(url_for('show_login'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('show_login'))
+
+@app.route('/session-info')
+def session_info():
+    if 'user' in session:
+        return jsonify({
+            "logged_in": True,
+            "email": session['user'],
+            "role": session.get('role', 'customer'),
+            "display_name": session.get('display_name') or session['user'].split('@')[0],
+        })
+    return jsonify({"logged_in": False})
 
 @app.route('/signup')
 def signup():
@@ -243,6 +275,57 @@ def get_all_reports():
         return jsonify({'status': 'success', 'data': report_list})
     except Exception as e:
         # Return internal server error message if database tracking fails
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+    
+@app.route('/api/filter_reports', methods=['GET'])
+def filter_reports():
+    """
+    API endpoint to filter animal reports based on user selection.
+    Expects URL query parameters like: ?types=dog,cat&healths=healthy,injured
+    """
+    try:
+        # 1. Retrieve query parameters from the frontend request
+        types_param = request.args.get('types', '')
+        healths_param = request.args.get('healths', '')
+        
+        # 2. Start with a base query that selects all reports
+        query = AnimalReport.query
+        
+        # 3. Apply the Animal Type filter if the user selected any
+        if types_param:
+            # Convert comma-separated string into a Python list: ['dog', 'cat']
+            type_list = types_param.split(',')
+            # Use SQLAlchemy's .in_() to filter rows matching any type in the list
+            query = query.filter(AnimalReport.animal_type.in_(type_list))
+            
+        # 4. Apply the Health Status filter if the user selected any
+        if healths_param:
+            health_list = healths_param.split(',')
+            query = query.filter(AnimalReport.health_status.in_(health_list))
+            
+        # 5. Execute the query to fetch the filtered results from the database
+        filtered_reports = query.all()
+        
+        # 6. Format the database objects into a list of dictionaries for JSON response
+        report_list = []
+        for r in filtered_reports:
+            img_url = url_for('uploaded_file', filename=r.image) if getattr(r, 'image', None) else None
+            report_list.append({
+                'id': r.id,
+                'lat': r.latitude,
+                'lng': r.longitude,
+                'address': r.address if r.address else f"{r.latitude}, {r.longitude}",
+                'animal_type': r.animal_type,
+                'quantity': getattr(r, 'quantity', 1), # Default to 1 if not exist
+                'health_status': r.health_status,
+                'image_url': img_url
+            })
+            
+        # 7. Return the successful response back to the frontend
+        return jsonify({'status': 'success', 'data': report_list})
+
+    except Exception as e:
+        # Return error details if something goes wrong
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/settings')
