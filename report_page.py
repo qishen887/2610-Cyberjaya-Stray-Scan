@@ -151,7 +151,7 @@ def homepage():
     return render_template('homepage.html')
 
 @app.route('/report')
-def report_page():
+def report():
     return render_template('report_page.html')
 
 # FIXED: Added a secondary route decorator so HTML templates asking for 'show_login' won't crash 
