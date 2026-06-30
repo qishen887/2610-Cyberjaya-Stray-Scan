@@ -131,11 +131,11 @@ def homepage():
     return render_template('homepage.html')
 
 @app.route('/report')
-def report():
+def report_page():
     return render_template('report_page.html')
 
-@app.route('/login', methods=['GET', 'POST'])
-def login_page():
+@app.route('/login', methods=['GET', 'POST'], endpoint='login_page')
+def show_login():
     if request.method == 'GET':
         if 'user' in session:
             if session['role'] == 'admin':
@@ -158,6 +158,10 @@ def login_page():
     else:
         flash("Invalid email or password. Please try again.")
         return redirect(url_for('login_page'))
+
+@app.route('/forgot-password', methods=['GET'], endpoint='forgot_password_page')
+def forgot_password_page():
+    return render_template('forgot_password.html')
 
 @app.route('/register')
 @app.route('/signup', methods=['GET', 'POST'])
