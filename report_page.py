@@ -178,39 +178,7 @@ def show_login():
         flash("Invalid email or password. Please try again.")
         return redirect(url_for('login_page'))
 
-# Forgot password and reset password routes
-@app.route('/forgot-password')
-def forgot_password_page():
-    return render_template('forgot_password.html')
-
-@app.route('/reset-password', methods=['POST'])
-def reset_password():
-    email = request.form.get('email').lower().strip()
-    password = request.form.get('password')
-    confirm_password = request.form.get('confirm_password')
-
-    # reset password logic to the database
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        flash("Email address not found. Please register first.")
-        return redirect(url_for('forgot_password_page'))
-
-    if password != confirm_password:
-        flash("Passwords do not match!")
-        return redirect(url_for('forgot_password_page'))
-    
-    if not (len(password) == 8 and password.isdigit()):
-        flash("Format error: Password must be exactly 8 digits!")
-        return redirect(url_for('forgot_password_page'))
-
-    # hash the new password and update the user record
-    user.password = generate_password_hash(password)
-    db.session.commit()
-
-    flash("Password reset successfully! Please login with your new password.")
-    return redirect(url_for('show_login'))
-from flask import send_from_directory, url_for
-
+ 
 @app.route('/register')
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
